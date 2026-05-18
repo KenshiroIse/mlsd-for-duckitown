@@ -14,11 +14,6 @@ def parse_args():
         default="./dataset",
         help="Dataset root containing train/val/test folders.",
     )
-    parser.add_argument(
-        "--output-dir",
-        default="wireframe",
-        help="Output folder under root that will contain split json labels.",
-    )
     parser.add_argument("--ignore-categories", default="", help="Comma-separated category names to ignore.")
     parser.add_argument("--min-area", type=float, default=50.0, help="Minimum polygon area (in pixels) to keep a mask.")
     parser.add_argument(
@@ -28,8 +23,7 @@ def parse_args():
         help="Polyline simplification epsilon for approxPolyDP.",
     )
     parser.add_argument("--preview", action="store_true", help="Write overlay previews for visual inspection.")
-    parser.add_argument("--preview-count", type=int, default=8, help="Number of preview images to write per split.")
-    parser.add_argument("--preview-dir", default="preview", help="Output subfolder under output dir.")
+    parser.add_argument("--preview-count", type=int, default=4, help="Number of preview images to write per split.")
     return parser.parse_args()
 
 
@@ -70,10 +64,7 @@ def draw_lines(img, lines, color=(0, 255, 0)):
 def main():
     args = parse_args()
     root = args.root
-    output_dir = os.path.join(root, args.output_dir)
-    os.makedirs(output_dir, exist_ok=True)
-
-    splits = ["train", "val", "test"]
+    splits = ["train", "valid", "test"]
     ignore_set = {name.strip() for name in args.ignore_categories.split(",") if name.strip()}
 
     for split in splits:
@@ -98,7 +89,7 @@ def main():
         preview_written = 0
 
         if args.preview:
-            preview_dir = os.path.join(output_dir, args.preview_dir, split)
+            preview_dir = os.path.join(root, "preview_wireframe", split)
             os.makedirs(preview_dir, exist_ok=True)
 
         for image_id, img in images.items():
@@ -139,7 +130,7 @@ def main():
                 cv2.imwrite(os.path.join(preview_dir, preview_name), overlay)
                 preview_written += 1
 
-        label_path = os.path.join(output_dir, f"{split}.json")
+        label_path = os.path.join(root, split, "_annotation.wireframe.json")
         with open(label_path, "w", encoding="utf-8") as f:
             json.dump(labels, f, ensure_ascii=True)
 

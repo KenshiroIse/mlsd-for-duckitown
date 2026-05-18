@@ -7,7 +7,6 @@ import numpy as np
 
 ROOT = "./dataset"
 SPLIT = "train"
-LABEL_DIR = "wireframe"
 OUTPUT_DIR = "preview_dataloader"
 
 
@@ -22,8 +21,8 @@ def _normalize_to_u8(map2d: np.ndarray) -> np.ndarray:
     return (norm * 255.0).clip(0, 255).astype(np.uint8)
 
 
-def _load_labels(root: str, split: str, label_dir: str):
-    label_path = os.path.join(root, label_dir, f"{split}.json")
+def _load_labels(root: str, split: str):
+    label_path = os.path.join(root, split, "_annotation.wireframe.json")
     if not os.path.isfile(label_path):
         raise FileNotFoundError(f"Label json not found: {label_path}")
     with open(label_path, "r", encoding="utf-8") as f:
@@ -42,7 +41,7 @@ def _load_labels(root: str, split: str, label_dir: str):
 
 
 def main() -> None:
-    image_paths, lines_list = _load_labels(ROOT, SPLIT, LABEL_DIR)
+    image_paths, lines_list = _load_labels(ROOT, SPLIT)
     if not image_paths:
         raise ValueError("No labels found. Check dataset and label_dir.")
 
