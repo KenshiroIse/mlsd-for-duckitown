@@ -4,3 +4,4 @@ core*
 static/results
 dataset
 dataloader_preview
+preview_dataloader
