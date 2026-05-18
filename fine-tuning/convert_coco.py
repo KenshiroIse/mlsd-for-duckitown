@@ -23,7 +23,7 @@ def parse_args():
         help="Polyline simplification epsilon for approxPolyDP.",
     )
     parser.add_argument("--preview", action="store_true", help="Write overlay previews for visual inspection.")
-    parser.add_argument("--preview-count", type=int, default=4, help="Number of preview images to write per split.")
+    parser.add_argument("--preview-count", type=int, default=5, help="Total number of preview images to write.")
     return parser.parse_args()
 
 
@@ -66,6 +66,11 @@ def main():
     root = args.root
     splits = ["train", "valid", "test"]
     ignore_set = {name.strip() for name in args.ignore_categories.split(",") if name.strip()}
+    preview_written = 0
+
+    if args.preview:
+        preview_dir = os.path.join(root, "preview_wireframe")
+        os.makedirs(preview_dir, exist_ok=True)
 
     for split in splits:
         coco_path = os.path.join(root, split, "_annotations.coco.json")
@@ -86,12 +91,6 @@ def main():
         total_images = 0
         kept_images = 0
         labels = []
-        preview_written = 0
-
-        if args.preview:
-            preview_dir = os.path.join(root, "preview_wireframe", split)
-            os.makedirs(preview_dir, exist_ok=True)
-
         for image_id, img in images.items():
             total_images += 1
             file_name = img["file_name"]
@@ -126,7 +125,7 @@ def main():
             if args.preview and preview_written < args.preview_count:
                 overlay = img_bgr.copy()
                 draw_lines(overlay, lines)
-                preview_name = os.path.splitext(file_name)[0] + "_preview.jpg"
+                preview_name = f"{split}_{os.path.splitext(file_name)[0]}_preview.jpg"
                 cv2.imwrite(os.path.join(preview_dir, preview_name), overlay)
                 preview_written += 1
 
