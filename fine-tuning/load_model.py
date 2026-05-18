@@ -5,10 +5,15 @@ Apache License v2.0
 """
 
 import argparse
+import sys
 import os
 from dataclasses import dataclass
 
 import tensorflow as tf
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.insert(0,parent_dir)
 
 from modules.models import WireFrameModel
 

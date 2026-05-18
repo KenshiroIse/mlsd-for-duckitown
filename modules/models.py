@@ -33,8 +33,9 @@ class BatchNormalization(tf.keras.layers.BatchNormalization):
 
     def call(self, x, training=False):
         if training is None:
-            training = tf.constant(False)
-        training = tf.logical_and(training, self.trainable)
+            training = False
+        # Freeze BN if layer is not trainable (use Python 'and' to avoid symbolic tensors)
+        training = training and self.trainable
 
         return super().call(x, training)
 
