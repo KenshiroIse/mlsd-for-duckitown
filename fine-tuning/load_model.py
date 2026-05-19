@@ -5,15 +5,15 @@ Apache License v2.0
 """
 
 import argparse
-import sys
 import os
+import sys
 from dataclasses import dataclass
 
 import tensorflow as tf
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
-sys.path.insert(0,parent_dir)
+sys.path.insert(0, parent_dir)
 
 from modules.models import WireFrameModel
 
@@ -40,8 +40,8 @@ class ModelConfig:
     wd: float = 0.0001
 
 
-def build_model(cfg: ModelConfig) -> tf.keras.Model:
-    return WireFrameModel(cfg, training=False)
+def build_model(cfg: ModelConfig, return_train_map: bool = False) -> tf.keras.Model:
+    return WireFrameModel(cfg, training=False, return_train_map=return_train_map)
 
 
 def load_checkpoint(model: tf.keras.Model, ckpt_dir: str) -> str:
@@ -61,8 +61,8 @@ def load_checkpoint(model: tf.keras.Model, ckpt_dir: str) -> str:
     return ""
 
 
-def load_pretrained_model(cfg: ModelConfig, ckpt_dir: str) -> tf.keras.Model:
-    model = build_model(cfg)
+def load_pretrained_model(cfg: ModelConfig, ckpt_dir: str, return_train_map: bool = False) -> tf.keras.Model:
+    model = build_model(cfg, return_train_map=return_train_map)
     model.summary(line_length=80)
     load_checkpoint(model, ckpt_dir)
     return model
