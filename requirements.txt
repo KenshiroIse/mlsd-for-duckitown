@@ -1,6 +1,8 @@
-numpy
+numpy>=2.0,<2.1
 opencv-python
 pillow
-tensorflow==2.16.*
+protobuf>=5.29.1,<6
+tensorflow==2.20.0
+tf-keras==2.20.0
 Flask
 gradio
