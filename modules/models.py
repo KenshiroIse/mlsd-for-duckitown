@@ -252,7 +252,7 @@ class Decoder(tf.keras.layers.Layer):
     def get_pts_scores(self, raw_map):
         raw_map_act = tf.math.sigmoid(raw_map)
         max_raw_map_act = tf.keras.layers.MaxPool2D(pool_size=(3, 3), strides=1, padding="same")(raw_map_act)  # NMS
-        raw_map_act = raw_map_act * tf.cast((tf.math.equal(raw_map_act, max_raw_map_act)), tf.float32)
+        raw_map_act = raw_map_act * tf.cast(tf.math.equal(raw_map_act, max_raw_map_act), raw_map_act.dtype)
 
         # topk centers
         topk = self.topk
@@ -273,7 +273,7 @@ class Decoder(tf.keras.layers.Layer):
     def get_pts_scores_fast(self, raw_map):
         raw_map_act = tf.math.sigmoid(raw_map)
         max_raw_map_act = tf.keras.layers.MaxPool2D(pool_size=(3, 3), strides=1, padding="same")(raw_map_act)  # NMS
-        raw_map_act = raw_map_act * tf.cast((tf.math.equal(raw_map_act, max_raw_map_act)), tf.float32)
+        raw_map_act = raw_map_act * tf.cast(tf.math.equal(raw_map_act, max_raw_map_act), raw_map_act.dtype)
 
         raw_map_act = raw_map_act[:, :, :, 0]
         indices = tf.where(raw_map_act > self.center_thr)
@@ -391,7 +391,7 @@ def WireFrameModel(cfg, training=False, name="WireFrameModel", return_train_map=
         tp_disp_end = org_disp_map[:, :, :, 2:4]
         sol_disp_start = disp_map[:, :, :, 0:2]
         sol_disp_end = disp_map[:, :, :, 2:4]
-        train_map = tf.concat(
+        train_map = tf.keras.layers.Concatenate(axis=-1)(
             [
                 org_center_map,
                 org_dist_map,
@@ -405,8 +405,7 @@ def WireFrameModel(cfg, training=False, name="WireFrameModel", return_train_map=
                 sol_disp_end,
                 corner_map,
                 line_map,
-            ],
-            axis=-1,
+            ]
         )
         out = train_map
     else:
