@@ -33,8 +33,10 @@ class BatchNormalization(tf.keras.layers.BatchNormalization):
     def call(self, x, training=False):
         if training is None:
             training = False
-        # Freeze BN if layer is not trainable (use Python 'and' to avoid symbolic tensors)
-        training = training and self.trainable
+        if isinstance(training, bool):
+            training = training and self.trainable
+        else:
+            training = tf.logical_and(training, self.trainable)
 
         return super().call(x, training)
 
@@ -252,7 +254,7 @@ class Decoder(tf.keras.layers.Layer):
     def get_pts_scores(self, raw_map):
         raw_map_act = tf.math.sigmoid(raw_map)
         max_raw_map_act = tf.keras.layers.MaxPool2D(pool_size=(3, 3), strides=1, padding="same")(raw_map_act)  # NMS
-        raw_map_act = raw_map_act * tf.cast(tf.math.equal(raw_map_act, max_raw_map_act), raw_map_act.dtype)
+        raw_map_act = raw_map_act * tf.cast((tf.math.equal(raw_map_act, max_raw_map_act)), tf.float32)
 
         # topk centers
         topk = self.topk
@@ -273,7 +275,7 @@ class Decoder(tf.keras.layers.Layer):
     def get_pts_scores_fast(self, raw_map):
         raw_map_act = tf.math.sigmoid(raw_map)
         max_raw_map_act = tf.keras.layers.MaxPool2D(pool_size=(3, 3), strides=1, padding="same")(raw_map_act)  # NMS
-        raw_map_act = raw_map_act * tf.cast(tf.math.equal(raw_map_act, max_raw_map_act), raw_map_act.dtype)
+        raw_map_act = raw_map_act * tf.cast((tf.math.equal(raw_map_act, max_raw_map_act)), tf.float32)
 
         raw_map_act = raw_map_act[:, :, :, 0]
         indices = tf.where(raw_map_act > self.center_thr)
@@ -347,7 +349,7 @@ class Decoder(tf.keras.layers.Layer):
         )
 
 
-def WireFrameModel(cfg, training=False, name="WireFrameModel", return_train_map=False):
+def WireFrameModel(cfg, training=False, name="WireFrameModel"):
     """Wireframe Model"""
     input_size = cfg.input_size  # if training else None
     backbone_type = cfg.backbone_type
@@ -386,47 +388,24 @@ def WireFrameModel(cfg, training=False, name="WireFrameModel", return_train_map=
         cfg=cfg,
     )(x)
 
-    if return_train_map:
-        tp_disp_start = org_disp_map[:, :, :, 0:2]
-        tp_disp_end = org_disp_map[:, :, :, 2:4]
-        sol_disp_start = disp_map[:, :, :, 0:2]
-        sol_disp_end = disp_map[:, :, :, 2:4]
-        train_map = tf.keras.layers.Concatenate(axis=-1)(
-            [
-                org_center_map,
-                org_dist_map,
-                org_deg_map,
-                tp_disp_start,
-                tp_disp_end,
-                center_map,
-                split_dist_map,
-                split_deg_map,
-                sol_disp_start,
-                sol_disp_end,
-                corner_map,
-                line_map,
-            ]
-        )
-        out = train_map
-    else:
-        out = (
-            center_map,
-            disp_map,
-            center_pts,
-            center_scores,
-            disp_map_act,
-            line_map,
-            corner_map,
-            corner_pts,
-            corner_scores,
-            org_center_map,
-            org_disp_map,
-            org_center_pts,
-            org_center_scores,
-            org_dist_map,
-            org_deg_map,
-            split_dist_map,
-            split_deg_map,
-        )
+    out = (
+        center_map,
+        disp_map,
+        center_pts,
+        center_scores,
+        disp_map_act,
+        line_map,
+        corner_map,
+        corner_pts,
+        corner_scores,
+        org_center_map,
+        org_disp_map,
+        org_center_pts,
+        org_center_scores,
+        org_dist_map,
+        org_deg_map,
+        split_dist_map,
+        split_deg_map,
+    )
 
     return Model(inputs, out, name=name)
