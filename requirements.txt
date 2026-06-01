@@ -6,3 +6,6 @@ tensorflow==2.20.0
 tf-keras==2.20.0
 Flask
 gradio
+tf2onnx
+onnxruntime
+onnx

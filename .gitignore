@@ -6,4 +6,4 @@ dataset
 dataloader_preview
 preview_dataloader
 .venv
-fine-tuned_model
+fine_tuned_model
