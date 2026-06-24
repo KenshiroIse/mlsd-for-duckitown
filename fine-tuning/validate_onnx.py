@@ -64,9 +64,9 @@ def build_export_model(model: tf.keras.Model) -> tf.keras.Model:
         return x
 
     outputs = [
-        tf.keras.layers.Lambda(passthrough, name="center_map")(model.output[0]),
-        tf.keras.layers.Lambda(passthrough, name="disp_map")(model.output[1]),
-        tf.keras.layers.Lambda(passthrough, name="line_map")(model.output[5]),
+        tf.keras.layers.Lambda(passthrough, name="org_disp_map")(model.output[10]),
+        tf.keras.layers.Lambda(passthrough, name="org_center_pts")(model.output[11]),
+        tf.keras.layers.Lambda(passthrough, name="org_center_scores")(model.output[12]),
     ]
     return tf.keras.Model(model.input, outputs, name="WireFrameModel")
 
