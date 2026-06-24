@@ -160,33 +160,56 @@ def generate_target_maps_np(
     return target
 
 
-def preprocess_image(image_path: tf.Tensor, lines: tf.Tensor) -> Tuple[tf.Tensor, tf.Tensor]:
+def _clip_lines_top(lines: tf.Tensor, y_min: float) -> tf.Tensor:
+    x1, y1, x2, y2 = tf.unstack(lines, axis=-1)
+    below1 = y1 < y_min
+    below2 = y2 < y_min
+    both_below = tf.logical_and(below1, below2)
+
+    denom = y2 - y1
+    denom_safe = tf.where(tf.abs(denom) < 1e-6, tf.ones_like(denom), denom)
+    t = (y_min - y1) / denom_safe
+    x_int = x1 + t * (x2 - x1)
+
+    x1_new = tf.where(below1, x_int, x1)
+    y1_new = tf.where(below1, y_min, y1)
+    x2_new = tf.where(below2, x_int, x2)
+    y2_new = tf.where(below2, y_min, y2)
+
+    clipped = tf.stack([x1_new, y1_new, x2_new, y2_new], axis=-1)
+    return tf.boolean_mask(clipped, tf.logical_not(both_below))
+
+
+def preprocess_image(image_path: tf.Tensor, lines: tf.Tensor, target_size: int) -> Tuple[tf.Tensor, tf.Tensor]:
     image_bytes = tf.io.read_file(image_path)
     image = tf.image.decode_jpeg(image_bytes, channels=3)
-    image = image[128:, :, :]
-    image = tf.pad(image, [[256, 0], [0, 0], [0, 0]])
+
+    orig_shape = tf.shape(image)
+    orig_h = tf.cast(orig_shape[0], tf.float32)
+    orig_w = tf.cast(orig_shape[1], tf.float32)
+
+    crop_top = 100
+    image = image[crop_top:, :, :]
+    image = tf.pad(image, [[crop_top, 0], [0, 0], [0, 0]])
 
     lines = tf.reshape(lines, [-1, 4])
     lines = tf.ensure_shape(lines, [None, 4])
 
+    lines = _clip_lines_top(lines, tf.cast(crop_top, tf.float32))
+
+    target_f = tf.cast(target_size, tf.float32)
+    scale_x = target_f / tf.maximum(orig_w, 1.0)
+    scale_y = target_f / tf.maximum(orig_h, 1.0)
+
     x1, y1, x2, y2 = tf.unstack(lines, axis=-1)
-    y1_cropped = y1 - 128.0
-    y2_cropped = y2 - 128.0
-    keep = tf.logical_not(tf.logical_and(y1_cropped < 0.0, y2_cropped < 0.0))
-    lines_cropped = tf.stack([x1, y1_cropped, x2, y2_cropped], axis=-1)
-    lines_filtered = tf.boolean_mask(lines_cropped, keep)
+    x1 = x1 * scale_x
+    x2 = x2 * scale_x
+    y1 = y1 * scale_y
+    y2 = y2 * scale_y
+    lines = tf.stack([x1, y1, x2, y2], axis=-1)
 
-    x1_f, y1_f, x2_f, y2_f = tf.unstack(lines_filtered, axis=-1)
-    y1_padded = y1_f + 256.0
-    y2_padded = y2_f + 256.0
-    lines = tf.stack([x1_f, y1_padded, x2_f, y2_padded], axis=-1)
-
-    if TARGET_SIZE == 320:
-        scale = 320.0 / 512.0
-        lines = lines * scale
-        image = tf.image.resize(image, [320, 320], method="bilinear")
-
-    image = tf.image.convert_image_dtype(image, tf.float32)
+    image = tf.image.resize(image, [target_size, target_size], method="bilinear")
+    image = tf.cast(image, tf.float32)  # Keep in [0, 255]; backbone applies preprocess_input internally
     return image, lines
 
 
@@ -206,7 +229,7 @@ def load_data_wrapper(
 ) -> Tuple[tf.Tensor, tf.Tensor]:
     line_values = lines.values if hasattr(lines, "values") else lines
     line_values = tf.reshape(line_values, [-1, 4])
-    image, line_values = preprocess_image(image_path, line_values)
+    image, line_values = preprocess_image(image_path, line_values, target_size)
 
     if augment:
         do_flip = tf.less(tf.random.uniform([]), 0.5)

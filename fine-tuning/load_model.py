@@ -1,10 +1,3 @@
-"""
-M-LSD
-Copyright 2021-present NAVER Corp.
-Apache License v2.0
-"""
-
-import argparse
 import os
 import sys
 from dataclasses import dataclass
@@ -40,8 +33,8 @@ class ModelConfig:
     wd: float = 0.0001
 
 
-def build_model(cfg: ModelConfig, return_train_map: bool = False) -> tf.keras.Model:
-    return WireFrameModel(cfg, training=False, return_train_map=return_train_map)
+def build_model(cfg: ModelConfig) -> tf.keras.Model:
+    return WireFrameModel(cfg, training=False)
 
 
 def load_checkpoint(model: tf.keras.Model, ckpt_dir: str) -> str:
@@ -53,29 +46,14 @@ def load_checkpoint(model: tf.keras.Model, ckpt_dir: str) -> str:
     )
 
     if manager.latest_checkpoint:
-        checkpoint.restore(manager.latest_checkpoint).expect_partial()
+        status = checkpoint.restore(manager.latest_checkpoint)
+        # Suppress optimizer-related warnings; model weights are still loaded correctly.
+        status.expect_partial()
         print(f"[*] load ckpt from {manager.latest_checkpoint} at step {checkpoint.step.numpy()}.")
         return manager.latest_checkpoint
 
     print("[*] No checkpoint found. Using imagenet pretrained weights.")
     return ""
-
-
-def load_pretrained_model(cfg: ModelConfig, ckpt_dir: str, return_train_map: bool = False) -> tf.keras.Model:
-    model = build_model(cfg, return_train_map=return_train_map)
-    model.summary(line_length=80)
-    load_checkpoint(model, ckpt_dir)
-    return model
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Load pretrained M-LSD checkpoints for fine-tuning.")
-    parser.add_argument(
-        "ckpt_dir",
-        type=str,
-        help="Checkpoint directory (e.g., ./ckpt_models/M-LSD_512_large).",
-    )
-    return parser.parse_args()
 
 
 def infer_config_from_path(ckpt_dir: str) -> ModelConfig:
@@ -99,16 +77,3 @@ def infer_config_from_path(ckpt_dir: str) -> ModelConfig:
         batch_size=1,
         topk=200,
     )
-
-
-def main() -> None:
-    args = parse_args()
-    if not os.path.isdir(args.ckpt_dir):
-        raise FileNotFoundError(f"Checkpoint directory not found: {args.ckpt_dir}")
-
-    cfg = infer_config_from_path(args.ckpt_dir)
-    load_pretrained_model(cfg, args.ckpt_dir)
-
-
-if __name__ == "__main__":
-    main()
