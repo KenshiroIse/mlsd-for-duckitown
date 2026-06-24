@@ -48,7 +48,7 @@ def pred_lines(
     input_shape=[512, 512],
     score_thr=0.10,
     dist_thr=20.0,
-    use_lane_preprocess=True,
+    use_lane_preprocess=False,
 ):
     if use_lane_preprocess:
         proc_image, scale = _preprocess_lane_image(image, input_shape)
@@ -117,7 +117,7 @@ def pred_squares(
         "w_area": 1.86,
         "w_center": 0.14,
     },
-    use_lane_preprocess=True,
+    use_lane_preprocess=False,
 ):
     h, w, _ = image.shape
     original_shape = [h, w]
