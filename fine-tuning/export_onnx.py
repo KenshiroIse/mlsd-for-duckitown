@@ -10,8 +10,10 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-from typing import Optional
 
+DEFAULT_ONNX_OPSET = 13
+
+os.environ.setdefault("TF_USE_LEGACY_KERAS", "1")
 os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
 
 import tensorflow as tf
@@ -78,7 +80,6 @@ def export_onnx(
     cfg: ModelConfig,
     ckpt_dir: str,
     output_path: str,
-    opset: Optional[int],
 ) -> tf.keras.Model:
     model = build_model(cfg)
     load_checkpoint(model, ckpt_dir)
@@ -95,7 +96,7 @@ def export_onnx(
     tf2onnx.convert.from_keras(
         export_model,
         input_signature=input_signature,
-        opset=opset,
+        opset=DEFAULT_ONNX_OPSET,
         output_path=output_path,
     )
 
@@ -135,7 +136,6 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Infer input size/backbone from checkpoint directory name when possible.",
     )
-    parser.add_argument("--opset", type=int, default=None, help="ONNX opset version (default: auto).")
     return parser.parse_args()
 
 
@@ -152,8 +152,9 @@ def main() -> None:
     print(f"[*] checkpoint: {ckpt_dir}")
     print(f"[*] output: {output_path}")
     print(f"[*] input size: {cfg.input_size}, backbone: {cfg.backbone_type}, topk: {cfg.topk}")
+    print(f"[*] opset: {DEFAULT_ONNX_OPSET}")
 
-    export_onnx(cfg, ckpt_dir, output_path, args.opset)
+    export_onnx(cfg, ckpt_dir, output_path)
     print("[*] export complete")
 
 
