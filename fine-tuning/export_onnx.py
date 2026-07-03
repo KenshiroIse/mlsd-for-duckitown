@@ -11,7 +11,7 @@ import argparse
 import os
 import sys
 
-DEFAULT_ONNX_OPSET = 13
+DEFAULT_ONNX_OPSET = 11
 
 os.environ.setdefault("TF_USE_LEGACY_KERAS", "1")
 os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
