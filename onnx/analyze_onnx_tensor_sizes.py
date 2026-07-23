@@ -10,9 +10,9 @@ Finds nodes whose output tensors are smaller than the model input tensor
 JSON outputs are written under onnx_analysis/ at the repository root.
 
 Examples:
-  python fine-tuning/analyze_onnx_tensor_sizes.py --model model.onnx
-  python fine-tuning/analyze_onnx_tensor_sizes.py --model model.onnx --save-json custom_name.json
-  python fine-tuning/analyze_onnx_tensor_sizes.py --json-path onnx_analysis/custom_name.json
+  python onnx/analyze_onnx_tensor_sizes.py --model model.onnx
+  python onnx/analyze_onnx_tensor_sizes.py --model model.onnx --save-json custom_name.json
+  python onnx/analyze_onnx_tensor_sizes.py --json-path onnx_analysis/custom_name.json
 """
 
 from __future__ import annotations

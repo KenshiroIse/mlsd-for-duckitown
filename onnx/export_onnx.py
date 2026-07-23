@@ -21,7 +21,9 @@ import tf2onnx
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 repo_root = os.path.dirname(current_dir)
+fine_tuning_dir = os.path.join(repo_root, "fine-tuning")
 sys.path.insert(0, repo_root)
+sys.path.insert(0, fine_tuning_dir)
 
 from load_model import ModelConfig, build_model, infer_config_from_path, load_checkpoint
 

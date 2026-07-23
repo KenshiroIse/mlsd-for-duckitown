@@ -17,13 +17,15 @@ import onnxruntime as ort
 os.environ.setdefault("TF_ENABLE_ONEDNN_OPTS", "0")
 os.environ.setdefault("TF_USE_LEGACY_KERAS", "1")
 
+current_dir = os.path.dirname(os.path.abspath(__file__))
+repo_root = os.path.dirname(current_dir)
+fine_tuning_dir = os.path.join(repo_root, "fine-tuning")
+sys.path.insert(0, repo_root)
+sys.path.insert(0, fine_tuning_dir)
+
 import dataloader as dl
 import tensorflow as tf
 from load_model import ModelConfig, build_model, infer_config_from_path, load_checkpoint
-
-current_dir = os.path.dirname(os.path.abspath(__file__))
-repo_root = os.path.dirname(current_dir)
-sys.path.insert(0, repo_root)
 
 DEFAULT_IMAGE_DIR = os.path.join(repo_root, "dataset", "test")
 DEFAULT_LABEL_PATH = os.path.join(DEFAULT_IMAGE_DIR, "_annotation.wireframe.json")
