@@ -90,27 +90,26 @@ def clip_lines_top_np(lines: np.ndarray, y_min: float) -> np.ndarray:
 
 
 def preprocess_image_np(
-    image_bgr: np.ndarray, lines: np.ndarray, target_size: int, crop_top: int = 100
+    image_bgr: np.ndarray, lines: np.ndarray, target_size: int, crop_top=None
 ) -> Tuple[np.ndarray, np.ndarray]:
+    """Match app-lane-detection: H//3 crop (no pad), then square bilinear resize."""
     orig_h, orig_w = image_bgr.shape[:2]
+    if crop_top is None:
+        crop_top = orig_h // 3
+    roi_h = max(orig_h - crop_top, 1)
 
     lines = clip_lines_top_np(lines, float(crop_top))
 
     scale_x = float(target_size) / float(max(orig_w, 1))
-    scale_y = float(target_size) / float(max(orig_h, 1))
+    scale_y = float(target_size) / float(roi_h)
     if lines.size:
-        lines = lines * np.array([scale_x, scale_y, scale_x, scale_y], dtype=np.float32)
+        lines = lines.astype(np.float32, copy=False)
+        lines[:, 0] *= scale_x
+        lines[:, 2] *= scale_x
+        lines[:, 1] = (lines[:, 1] - float(crop_top)) * scale_y
+        lines[:, 3] = (lines[:, 3] - float(crop_top)) * scale_y
 
     image_bgr = image_bgr[crop_top:, :, :]
-    image_bgr = cv2.copyMakeBorder(
-        image_bgr,
-        crop_top,
-        0,
-        0,
-        0,
-        borderType=cv2.BORDER_CONSTANT,
-        value=(0, 0, 0),
-    )
     image_bgr = cv2.resize(image_bgr, (target_size, target_size), interpolation=cv2.INTER_LINEAR)
     image_bgr = image_bgr.astype(np.float32)  # Keep in [0, 255]
 

@@ -181,6 +181,11 @@ def _clip_lines_top(lines: tf.Tensor, y_min: float) -> tf.Tensor:
 
 
 def preprocess_image(image_path: tf.Tensor, lines: tf.Tensor, target_size: int) -> Tuple[tf.Tensor, tf.Tensor]:
+    """Match app-lane-detection line_detector + MLSDOnnx geometry.
+
+    1) top_cutoff = H // 3 (crop only, no pad)
+    2) resize cropped ROI to target_size x target_size (bilinear)
+    """
     image_bytes = tf.io.read_file(image_path)
     image = tf.image.decode_jpeg(image_bytes, channels=3)
 
@@ -188,24 +193,25 @@ def preprocess_image(image_path: tf.Tensor, lines: tf.Tensor, target_size: int) 
     orig_h = tf.cast(orig_shape[0], tf.float32)
     orig_w = tf.cast(orig_shape[1], tf.float32)
 
-    crop_top = 100
+    crop_top = orig_shape[0] // 3
+    crop_top_f = tf.cast(crop_top, tf.float32)
+    roi_h = tf.maximum(orig_h - crop_top_f, 1.0)
     image = image[crop_top:, :, :]
-    image = tf.pad(image, [[crop_top, 0], [0, 0], [0, 0]])
 
     lines = tf.reshape(lines, [-1, 4])
     lines = tf.ensure_shape(lines, [None, 4])
 
-    lines = _clip_lines_top(lines, tf.cast(crop_top, tf.float32))
+    lines = _clip_lines_top(lines, crop_top_f)
 
     target_f = tf.cast(target_size, tf.float32)
     scale_x = target_f / tf.maximum(orig_w, 1.0)
-    scale_y = target_f / tf.maximum(orig_h, 1.0)
+    scale_y = target_f / roi_h
 
     x1, y1, x2, y2 = tf.unstack(lines, axis=-1)
     x1 = x1 * scale_x
     x2 = x2 * scale_x
-    y1 = y1 * scale_y
-    y2 = y2 * scale_y
+    y1 = (y1 - crop_top_f) * scale_y
+    y2 = (y2 - crop_top_f) * scale_y
     lines = tf.stack([x1, y1, x2, y2], axis=-1)
 
     image = tf.image.resize(image, [target_size, target_size], method="bilinear")

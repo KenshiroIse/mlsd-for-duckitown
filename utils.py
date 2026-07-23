@@ -10,33 +10,46 @@ import tensorflow as tf
 
 
 def _preprocess_lane_image(image, input_shape):
-    cropped = image[128:, :, :]
-    padded = cv2.copyMakeBorder(cropped, 256, 0, 0, 0, cv2.BORDER_CONSTANT, value=0)
-    if padded.shape[0] != 512 or padded.shape[1] != 512:
-        padded = cv2.resize(padded, (512, 512), interpolation=cv2.INTER_AREA)
-    if input_shape[0] != 512:
-        resized = cv2.resize(padded, (input_shape[0], input_shape[1]), interpolation=cv2.INTER_AREA)
-    else:
-        resized = padded
-    scale = float(input_shape[0]) / 512.0
-    return resized, scale
+    """Match app-lane-detection: top_cutoff=H//3 crop (no pad), then square resize."""
+    h, w = image.shape[:2]
+    top_cutoff = h // 3
+    cropped = image[top_cutoff:, :, :]
+    resized = cv2.resize(
+        cropped,
+        (int(input_shape[1]), int(input_shape[0])),
+        interpolation=cv2.INTER_LINEAR,
+    )
+    # meta: top_cutoff, roi_h, raw_h, raw_w, input_h, input_w
+    meta = (
+        float(top_cutoff),
+        float(max(h - top_cutoff, 1)),
+        float(h),
+        float(w),
+        float(input_shape[0]),
+        float(input_shape[1]),
+    )
+    return resized, meta
 
 
-def _restore_lines(lines, scale):
+def _restore_lines(lines, meta):
     if lines.size == 0:
         return lines
-    lines[:, 0] = lines[:, 0] / scale
-    lines[:, 1] = lines[:, 1] / scale - 128.0
-    lines[:, 2] = lines[:, 2] / scale
-    lines[:, 3] = lines[:, 3] / scale - 128.0
+    top_cutoff, roi_h, _raw_h, raw_w, input_h, input_w = meta
+    lines = np.asarray(lines, dtype=np.float64).copy()
+    lines[:, 0] = lines[:, 0] * raw_w / input_w
+    lines[:, 2] = lines[:, 2] * raw_w / input_w
+    lines[:, 1] = lines[:, 1] * roi_h / input_h + top_cutoff
+    lines[:, 3] = lines[:, 3] * roi_h / input_h + top_cutoff
     return lines
 
 
-def _restore_points(points, scale):
+def _restore_points(points, meta):
     if points is None or len(points) == 0:
         return points
-    points[:, 0] = points[:, 0] / scale
-    points[:, 1] = points[:, 1] / scale - 128.0
+    top_cutoff, roi_h, _raw_h, raw_w, input_h, input_w = meta
+    points = np.asarray(points, dtype=np.float64).copy()
+    points[:, 0] = points[:, 0] * raw_w / input_w
+    points[:, 1] = points[:, 1] * roi_h / input_h + top_cutoff
     return points
 
 
@@ -587,7 +600,7 @@ def pred_squares(
 
     try:
         if use_lane_preprocess:
-            new_segments = _restore_lines(new_segments, scale / 2.0)
+            new_segments = _restore_lines(np.asarray(new_segments, dtype=np.float64) * 2.0, scale)
         else:
             new_segments[:, 0] = new_segments[:, 0] * 2 / input_shape[1] * original_shape[1]
             new_segments[:, 1] = new_segments[:, 1] * 2 / input_shape[0] * original_shape[0]
@@ -598,9 +611,10 @@ def pred_squares(
 
     try:
         if use_lane_preprocess:
-            squares = squares.astype(np.float32)
-            squares[:, :, 0] = squares[:, :, 0] * 2 / scale
-            squares[:, :, 1] = squares[:, :, 1] * 2 / scale - 128.0
+            squares = squares.astype(np.float32) * 2.0
+            top_cutoff, roi_h, _raw_h, raw_w, input_h, input_w = scale
+            squares[:, :, 0] = squares[:, :, 0] * raw_w / input_w
+            squares[:, :, 1] = squares[:, :, 1] * roi_h / input_h + top_cutoff
         else:
             squares[:, :, 0] = squares[:, :, 0] * 2 / input_shape[1] * original_shape[1]
             squares[:, :, 1] = squares[:, :, 1] * 2 / input_shape[0] * original_shape[0]
@@ -611,7 +625,7 @@ def pred_squares(
     try:
         inter_points = np.array(inter_points)
         if use_lane_preprocess:
-            inter_points = _restore_points(inter_points, scale / 2.0)
+            inter_points = _restore_points(np.asarray(inter_points, dtype=np.float64) * 2.0, scale)
         else:
             inter_points[:, 0] = inter_points[:, 0] * 2 / input_shape[1] * original_shape[1]
             inter_points[:, 1] = inter_points[:, 1] * 2 / input_shape[0] * original_shape[0]
